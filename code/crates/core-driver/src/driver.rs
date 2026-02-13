@@ -525,6 +525,10 @@ where
 
         let vote_round = vote.round();
         let this_round = self.round();
+        let vote_value = match vote.value() {
+            NilOrVal::Nil => None,
+            NilOrVal::Val(value_id) => Some(value_id.clone()),
+        };
 
         let Some(output) = self.vote_keeper.apply_vote(vote, this_round) else {
             return Ok(None);
@@ -544,7 +548,8 @@ where
             _ => (),
         }
 
-        let (input_round, round_input) = self.multiplex_vote_threshold(output, vote_round);
+        let (input_round, round_input) =
+            self.multiplex_vote_threshold(output, vote_round, vote_value);
 
         if round_input == RoundInput::NoInput {
             return Ok(None);

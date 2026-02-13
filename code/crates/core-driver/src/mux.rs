@@ -295,12 +295,34 @@ where
         &mut self,
         new_threshold: VKOutput<ValueId<Ctx>>,
         threshold_round: Round,
+        vote_value: Option<ValueId<Ctx>>,
     ) -> (Round, RoundInput<Ctx>) {
         match new_threshold {
             VKOutput::PolkaAny => (threshold_round, RoundInput::PolkaAny),
             VKOutput::PolkaNil => (threshold_round, RoundInput::PolkaNil),
             VKOutput::PrecommitAny => (threshold_round, RoundInput::PrecommitAny),
-            VKOutput::SkipRound(r) => (threshold_round, RoundInput::SkipRound(r)),
+            VKOutput::SkipRound(r) => {
+                // Check for a concurrent PrecommitValue(v) output
+                if let Some(v) = vote_value {
+                    if self.vote_keeper.is_threshold_met(
+                        &r,
+                        VoteType::Precommit,
+                        Threshold::Value(v.clone()),
+                    ) {
+                        if let Some((proposal, validity)) =
+                            self.proposal_and_validity_for_round_and_value(threshold_round, v)
+                        {
+                            if validity.is_valid() {
+                                return (
+                                    threshold_round,
+                                    RoundInput::ProposalAndPrecommitValue(proposal.message.clone()),
+                                );
+                            }
+                        }
+                    }
+                }
+                (threshold_round, RoundInput::SkipRound(r))
+            }
             VKOutput::PrecommitValue(v) => {
                 if let Some((proposal, validity)) =
                     self.proposal_and_validity_for_round_and_value(threshold_round, v)
@@ -389,6 +411,7 @@ where
                     result.push(self.multiplex_vote_threshold(
                         VKOutput::PolkaValue(proposal.value().id()),
                         round,
+                        None,
                     ))
                 }
 
@@ -397,7 +420,7 @@ where
         }
 
         for threshold in find_non_value_threshold(&self.vote_keeper, round) {
-            result.push(self.multiplex_vote_threshold(threshold, round))
+            result.push(self.multiplex_vote_threshold(threshold, round, None))
         }
         result
     }
