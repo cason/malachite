@@ -3647,7 +3647,7 @@ fn sync_decision_certificate_then_proposal() {
 }
 
 #[test]
-fn round_1_decision_during_round_0() {
+fn round_1_decision_during_round_0_with_votes() {
     let value = Value::new(9999);
 
     let [(v1, _sk1), (v2, _sk2), (v3, sk3)] = make_validators([2, 3, 2]);
@@ -3690,11 +3690,21 @@ fn round_1_decision_during_round_0() {
             new_state: propose_state(Round::new(0)),
         },
         TestStep {
-            desc: "v2 precommits the same round 1 proposal, we have a decision",
+            desc: "v2 precommits the same round 1 proposal, move to round 1",
             input: precommit_input(Round::new(1), value.clone(), &v2.address),
-            expected_outputs: vec![decide_output(Round::new(0), proposal)],
-            expected_round: Round::new(0),
-            new_state: decided_state(Round::new(0), Round::new(1), value),
+            expected_outputs: vec![new_round_output(Round::new(1))],
+            expected_round: Round::new(1),
+            new_state: new_round(Round::new(1)),
+        },
+        TestStep {
+            desc: "Start round 1 and decide immediately",
+            input: new_round_input(Round::new(1), v2.address),
+            expected_outputs: vec![
+                start_propose_timer_output(Round::new(1)),
+                decide_output(Round::new(1), proposal),
+            ],
+            expected_round: Round::new(1),
+            new_state: decided_state(Round::new(1), Round::new(1), value),
         },
     ];
 
@@ -3731,22 +3741,32 @@ fn round_1_decision_during_round_0_via_certificate() {
             new_state: propose_state(Round::new(0)),
         },
         TestStep {
-            desc: "we get a commit certificate for v at round 1",
-            input: commit_certificate_input_at(
-                Round::new(1),
-                value.clone(),
-                &[v1.address, v2.address],
-            ),
+            desc: "Receive proposal from round 1",
+            input: proposal_input_from_proposal(proposal.clone(), Validity::Valid),
             expected_outputs: vec![],
             expected_round: Round::new(0),
             new_state: propose_state(Round::new(0)),
         },
         TestStep {
-            desc: "Receive proposal from round 1",
-            input: proposal_input_from_proposal(proposal.clone(), Validity::Valid),
-            expected_outputs: vec![decide_output(Round::new(0), proposal)],
-            expected_round: Round::new(0),
-            new_state: decided_state(Round::new(0), Round::new(1), value),
+            desc: "we get a commit certificate for v at round 1, move to round 1",
+            input: commit_certificate_input_at(
+                Round::new(1),
+                value.clone(),
+                &[v1.address, v2.address],
+            ),
+            expected_outputs: vec![new_round_output(Round::new(1))],
+            expected_round: Round::new(1),
+            new_state: new_round(Round::new(1)),
+        },
+        TestStep {
+            desc: "Start round 1 and decide immediately",
+            input: new_round_input(Round::new(1), v2.address),
+            expected_outputs: vec![
+                start_propose_timer_output(Round::new(1)),
+                decide_output(Round::new(1), proposal),
+            ],
+            expected_round: Round::new(1),
+            new_state: decided_state(Round::new(1), Round::new(1), value),
         },
     ];
 
