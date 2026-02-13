@@ -303,6 +303,22 @@ where
             .get_proposal_and_validity_for_round_and_value(round, value_id)
     }
 
+    /// Returns a valid proposal for the given round and value_id, if any.
+    pub fn valid_proposal_for_round_and_value(
+        &self,
+        round: Round,
+        value_id: ValueId<Ctx>,
+    ) -> Option<&SignedProposal<Ctx>> {
+        if let Some((proposal, validity)) =
+            self.proposal_and_validity_for_round_and_value(round, value_id)
+        {
+            if validity.is_valid() {
+                return Some(proposal);
+            }
+        }
+        None
+    }
+
     /// Returns the proposals and their validities for the given round, if any.
     pub fn proposals_and_validities_for_round(
         &self,
@@ -525,6 +541,10 @@ where
 
         let vote_round = vote.round();
         let this_round = self.round();
+        let vote_value = match vote.value() {
+            NilOrVal::Nil => None,
+            NilOrVal::Val(value_id) => Some(value_id.clone()),
+        };
 
         let Some(output) = self.vote_keeper.apply_vote(vote, this_round) else {
             return Ok(None);
@@ -544,7 +564,8 @@ where
             _ => (),
         }
 
-        let (input_round, round_input) = self.multiplex_vote_threshold(output, vote_round);
+        let (input_round, round_input) =
+            self.multiplex_vote_threshold(output, vote_round, vote_value);
 
         if round_input == RoundInput::NoInput {
             return Ok(None);
