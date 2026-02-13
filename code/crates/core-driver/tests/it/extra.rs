@@ -2977,7 +2977,7 @@ fn polka_nil_and_prevote_step_precommit_nil() {
                 prevote_nil_output(Round::new(0), &my_addr),
                 precommit_nil_output(Round::new(0), &my_addr),
                 start_precommit_timer_output(Round::new(0)),
-                start_precommit_timer_output(Round::new(0)),
+                start_precommit_timer_output(Round::new(0)), // :'(
             ],
             expected_round: Round::new(0),
             new_state: precommit_state(Round::new(0)),
@@ -3774,7 +3774,7 @@ fn round_1_decision_during_round_0_via_certificate() {
 }
 
 #[test]
-fn round_1_invalid_decision_during_round_0() {
+fn round_1_invalid_decision_during_round_0_with_votes() {
     let value = Value::new(9999);
 
     let [(v1, _sk1), (v2, _sk2), (v3, sk3)] = make_validators([2, 3, 2]);
@@ -3817,11 +3817,23 @@ fn round_1_invalid_decision_during_round_0() {
             new_state: propose_state(Round::new(0)),
         },
         TestStep {
-            desc: "v2 precommits the same round 1 proposal, but we don't decide",
+            desc: "v2 precommits the same round 1 proposal, move to round 1",
             input: precommit_input(Round::new(1), value.clone(), &v2.address),
             expected_outputs: vec![new_round_output(Round::new(1))],
             expected_round: Round::new(1),
             new_state: new_round(Round::new(1)),
+        },
+        TestStep {
+            desc: "Start round 1 but does not decide invalid proposal",
+            input: new_round_input(Round::new(1), v2.address),
+            expected_outputs: vec![
+                start_propose_timer_output(Round::new(1)),
+                prevote_nil_output(Round::new(1), &my_addr),
+                start_precommit_timer_output(Round::new(1)),
+                start_precommit_timer_output(Round::new(1)), // :'(
+            ],
+            expected_round: Round::new(1),
+            new_state: prevote_state(Round::new(1)),
         },
     ];
 
@@ -3858,22 +3870,33 @@ fn round_1_invalid_decision_during_round_0_via_certificate() {
             new_state: propose_state(Round::new(0)),
         },
         TestStep {
-            desc: "we get a commit certificate for v at round 1",
-            input: commit_certificate_input_at(
-                Round::new(1),
-                value.clone(),
-                &[v1.address, v2.address],
-            ),
-            expected_outputs: vec![],
-            expected_round: Round::new(0),
-            new_state: propose_state(Round::new(0)),
-        },
-        TestStep {
             desc: "Receive proposal from round 1, which is invalid",
             input: proposal_input_from_proposal(proposal.clone(), Validity::Invalid),
             expected_outputs: vec![],
             expected_round: Round::new(0),
             new_state: propose_state(Round::new(0)),
+        },
+        TestStep {
+            desc: "we get a commit certificate for v at round 1, move to round 1",
+            input: commit_certificate_input_at(
+                Round::new(1),
+                value.clone(),
+                &[v1.address, v2.address],
+            ),
+            expected_outputs: vec![new_round_output(Round::new(1))],
+            expected_round: Round::new(1),
+            new_state: new_round(Round::new(1)),
+        },
+        TestStep {
+            desc: "Start round 1 but does not decide invalid proposal",
+            input: new_round_input(Round::new(1), v2.address),
+            expected_outputs: vec![
+                start_propose_timer_output(Round::new(1)),
+                prevote_nil_output(Round::new(1), &my_addr),
+                start_precommit_timer_output(Round::new(1)),
+            ],
+            expected_round: Round::new(1),
+            new_state: prevote_state(Round::new(1)),
         },
     ];
 
