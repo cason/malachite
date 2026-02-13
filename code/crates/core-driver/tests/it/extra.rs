@@ -3894,6 +3894,7 @@ fn round_1_invalid_decision_during_round_0_via_certificate() {
                 start_propose_timer_output(Round::new(1)),
                 prevote_nil_output(Round::new(1), &my_addr),
                 start_precommit_timer_output(Round::new(1)),
+                start_precommit_timer_output(Round::new(1)), // :'(
             ],
             expected_round: Round::new(1),
             new_state: prevote_state(Round::new(1)),

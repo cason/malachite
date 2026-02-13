@@ -401,6 +401,10 @@ where
         for threshold in find_non_value_threshold(&self.vote_keeper, round) {
             result.push(self.multiplex_vote_threshold(threshold, round))
         }
+        // This is equivalent of having a VKOutput::PrecommitAny
+        if self.commit_certificate_for_round(round).is_some() {
+            result.push(self.multiplex_vote_threshold(VKOutput::PrecommitAny, round));
+        }
         result
     }
 }

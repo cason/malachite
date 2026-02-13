@@ -241,7 +241,7 @@ where
         }
     }
 
-    /// Get a commit certificate for the given round and value id.
+    /// Get a commit certificate for the given round and value id, if any.
     pub fn commit_certificate(
         &self,
         round: Round,
@@ -250,6 +250,16 @@ where
         self.commit_certificates
             .iter()
             .find(|c| &c.value_id == value_id && c.round == round && c.height == self.height())
+    }
+
+    /// Get a commit certificate for the given round, if any.
+    pub fn commit_certificate_for_round(
+        &self,
+        round: Round,
+    ) -> Option<&CommitCertificate<Ctx>> {
+        self.commit_certificates
+            .iter()
+            .find(|c| c.round == round && c.height == self.height())
     }
 
     /// Return the commit certificates, if any.
