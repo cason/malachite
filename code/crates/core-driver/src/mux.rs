@@ -309,32 +309,25 @@ where
                         VoteType::Precommit,
                         Threshold::Value(v.clone()),
                     ) {
-                        if let Some((proposal, validity)) =
-                            self.proposal_and_validity_for_round_and_value(threshold_round, v)
+                        if let Some(proposal) =
+                            self.valid_proposal_for_round_and_value(threshold_round, v)
                         {
-                            if validity.is_valid() {
-                                return (
-                                    threshold_round,
-                                    RoundInput::ProposalAndPrecommitValue(proposal.message.clone()),
-                                );
-                            }
+                            return (
+                                threshold_round,
+                                RoundInput::ProposalAndPrecommitValue(proposal.message.clone()),
+                            );
                         }
                     }
                 }
                 (threshold_round, RoundInput::SkipRound(r))
             }
             VKOutput::PrecommitValue(v) => {
-                if let Some((proposal, validity)) =
-                    self.proposal_and_validity_for_round_and_value(threshold_round, v)
+                if let Some(proposal) = self.valid_proposal_for_round_and_value(threshold_round, v)
                 {
-                    if validity.is_valid() {
-                        (
-                            threshold_round,
-                            RoundInput::ProposalAndPrecommitValue(proposal.message.clone()),
-                        )
-                    } else {
-                        (threshold_round, RoundInput::PrecommitAny)
-                    }
+                    (
+                        threshold_round,
+                        RoundInput::ProposalAndPrecommitValue(proposal.message.clone()),
+                    )
                 } else {
                     (threshold_round, RoundInput::PrecommitAny)
                 }
