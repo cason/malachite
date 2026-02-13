@@ -214,7 +214,9 @@ where
         // Store the certificate
         self.commit_certificates.push(certificate);
 
-        if let Some((signed_proposal, validity)) =
+        if certificate_round > self.round() {
+            return Some(RoundInput::SkipRound(certificate_round));
+        } else if let Some((signed_proposal, validity)) =
             self.proposal_and_validity_for_round_and_value(certificate_round, certificate_value_id)
         {
             if validity.is_valid() {
