@@ -214,7 +214,9 @@ where
         // Store the certificate
         self.commit_certificates.push(certificate);
 
-        if let Some((signed_proposal, validity)) =
+        if certificate_round > self.round() {
+            return Some(RoundInput::SkipRound(certificate_round));
+        } else if let Some((signed_proposal, validity)) =
             self.proposal_and_validity_for_round_and_value(certificate_round, certificate_value_id)
         {
             if validity.is_valid() {
@@ -398,6 +400,10 @@ where
 
         for threshold in find_non_value_threshold(&self.vote_keeper, round) {
             result.push(self.multiplex_vote_threshold(threshold, round))
+        }
+        // This is equivalent of having a VKOutput::PrecommitAny
+        if self.commit_certificate_for_round(round).is_some() {
+            result.push(self.multiplex_vote_threshold(VKOutput::PrecommitAny, round));
         }
         result
     }
