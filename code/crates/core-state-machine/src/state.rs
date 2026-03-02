@@ -9,7 +9,7 @@ use crate::transition::Transition;
 #[cfg(feature = "debug")]
 use crate::traces::*;
 
-use malachitebft_core_types::{Context, Height, Round, TimeoutKind};
+use malachitebft_core_types::{Context, Height, Round};
 
 /// A value and its associated round
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -27,55 +27,9 @@ impl<Value> RoundValue<Value> {
     }
 }
 
-/// Tracks which consensus timeouts have already been scheduled in the current round.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub struct ScheduledTimeouts {
-    bits: u8,
-}
-
-impl ScheduledTimeouts {
-    const PROPOSE_BIT: u8 = 1 << 0;
-    const PREVOTE_BIT: u8 = 1 << 1;
-    const PRECOMMIT_BIT: u8 = 1 << 2;
-
-    /// Clears all scheduled timeouts.
-    pub fn clear(&mut self) {
-        self.bits = 0;
-    }
-
-    /// Checks whether a timeout can be scheduled.
-    ///
-    /// Returns `true` and records the timeout as scheduled if it wasn't already.
-    ///
-    /// Untracked timeouts (like Rebroadcast) will always return `false`.
-    pub fn check(&mut self, timeout: TimeoutKind) -> bool {
-        if let Some(mask) = Self::mask(timeout) {
-            let was_scheduled = (self.bits & mask) != 0;
-            self.bits |= mask;
-            !was_scheduled
-        } else {
-            // Panic in debug mode (tests/local dev), but gracefully denies the timeout in production.
-            debug_assert!(false, "Only Propose, Prevote, and Precommit timeouts should be checked here. Got: {timeout:?}");
-
-            // Untracked timeouts are not scheduled and always return false.
-            false
-        }
-    }
-
-    /// Helper to map a `TimeoutKind` to its specific bitmask.
-    /// Returns `None` for timeouts that are not tracked per-round.
-    const fn mask(timeout: TimeoutKind) -> Option<u8> {
-        match timeout {
-            TimeoutKind::Propose => Some(Self::PROPOSE_BIT),
-            TimeoutKind::Prevote => Some(Self::PREVOTE_BIT),
-            TimeoutKind::Precommit => Some(Self::PRECOMMIT_BIT),
-            _ => None,
-        }
-    }
-}
-
 /// The step of consensus in this round
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(usize)]
 pub enum Step {
     /// The round has not started yet
     Unstarted,
@@ -93,6 +47,40 @@ pub enum Step {
     /// We have committed and decided on a value
     Commit,
 }
+
+/// Tracks for which `Step`s consensus timeouts have already been scheduled.
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub struct ScheduledTimeouts {
+    bits: u8,
+}
+
+impl ScheduledTimeouts {
+    /// Clears all scheduled timeouts.
+    pub fn clear(&mut self) {
+        self.bits = 0;
+    }
+
+    /// Checks whether the timeout for a step can be scheduled.
+    ///
+    /// Returns `true` and records the timeout as scheduled if it wasn't already.
+    ///
+    /// Untracked timeouts (like Rebroadcast) will always return `false`.
+    pub fn check(&mut self, step: Step) -> bool {
+        let timeout = step as usize;
+        if timeout < Step::Propose as usize || timeout > Step::Precommit as usize {
+            // Panic in debug mode (tests/local dev), but gracefully denies the timeout in production.
+            debug_assert!(false, "Only Propose, Prevote, and Precommit timeouts should be checked here. Got: {timeout:?}");
+
+            // Untracked timeouts are not scheduled and always return false.
+            return false;
+        }
+        let mask = 1 << (timeout - 1);
+        let was_scheduled = (self.bits & mask) != 0;
+        self.bits |= mask;
+        !was_scheduled
+    }
+}
+
 
 /// The state of the consensus state machine
 #[derive_where(Clone, Debug, PartialEq, Eq)]
@@ -160,12 +148,12 @@ where
         Self { step, ..self }
     }
 
-    /// Check whether a timeout can be scheduled for the current round.
+    /// Checks whether the timeout for a step can be scheduled for the current round.
     ///
     /// Returns `true` and record the timeout as scheduled, if not duplicated.
     /// Otherwise, the timeout was already scheduled and the method returns `false`.
-    pub fn check_timeout(&mut self, timeout: TimeoutKind) -> bool {
-        self.scheduled_timeouts.check(timeout)
+    pub fn check_timeout(&mut self, step: Step) -> bool {
+        self.scheduled_timeouts.check(step)
     }
 
     /// Update the state's round.
