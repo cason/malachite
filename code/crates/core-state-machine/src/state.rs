@@ -65,22 +65,24 @@ impl ScheduledTimeouts {
     /// Returns `true` and records the timeout as scheduled if it wasn't already.
     ///
     /// Untracked timeouts (like Rebroadcast) will always return `false`.
-    pub fn check(&mut self, step: Step) -> bool {
-        let timeout = step as usize;
-        if timeout < Step::Propose as usize || timeout > Step::Precommit as usize {
-            // Panic in debug mode (tests/local dev), but gracefully denies the timeout in production.
-            debug_assert!(false, "Only Propose, Prevote, and Precommit timeouts should be checked here. Got: {timeout:?}");
+    pub fn check(&mut self, timeout: Step) -> bool {
+        let step = timeout as usize;
+        if step < Step::Propose as usize || step > Step::Precommit as usize {
+            // Panic in debug mode (tests/local dev), but gracefully denies the step in production.
+            debug_assert!(
+                false,
+                "Only Propose, Prevote, and Precommit steps should be checked here. Got: {step:?}"
+            );
 
-            // Untracked timeouts are not scheduled and always return false.
+            // Untracked steps are not scheduled and always return false.
             return false;
         }
-        let mask = 1 << (timeout - 1);
+        let mask = 1 << (step - Step::Propose as usize);
         let was_scheduled = (self.bits & mask) != 0;
         self.bits |= mask;
         !was_scheduled
     }
 }
-
 
 /// The state of the consensus state machine
 #[derive_where(Clone, Debug, PartialEq, Eq)]
