@@ -3906,6 +3906,7 @@ fn round_1_decision_via_certificate_proposal_arrives_later() {
             expected_round: Round::new(1),
             new_state: new_round(Round::new(1)),
         },
+        // This step is not necessary for the test to succeed, but it is expected to happen.
         TestStep {
             desc: "Start round 1",
             input: new_round_input(Round::new(1), v2.address),
