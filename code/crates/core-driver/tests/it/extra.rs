@@ -4006,7 +4006,7 @@ fn round_certificate_stored_on_commit_certificate_fallback_to_skip_round() {
 
     assert!(
         driver.round_certificate().is_some(),
-        "round certificate should be stored when commit certificate triggers SkipRound"
+        "round certificate for round 1 should be stored upon round-1 commit certificate"
     );
 }
 
