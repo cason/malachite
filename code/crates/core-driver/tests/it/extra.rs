@@ -3967,7 +3967,7 @@ fn round_certificate_stored_on_precommit_value_fallback_to_skip_round() {
     // over SkipRound in the vote keeper.
     assert!(
         driver.round_certificate().is_some(),
-        "round certificate should be stored when PrecommitValue falls back to SkipRound"
+        "round certificate for round 1 should be stored upon PrecommitValue(1) and no decision"
     );
 }
 
